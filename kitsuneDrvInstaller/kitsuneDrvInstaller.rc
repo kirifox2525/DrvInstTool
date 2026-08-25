@@ -372,7 +372,7 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,2,16
+ FILEVERSION 1,0,2,17
  PRODUCTVERSION 1,0,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
@@ -390,11 +390,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Kirifox Project"
             VALUE "FileDescription", "kiri Driver Installer"
-            VALUE "FileVersion", "1.0.2.16"
+            VALUE "FileVersion", "1.0.2.17"
             VALUE "InternalName", "kiri Driver Installer.exe"
             VALUE "LegalCopyright", L"\x00A9 Kirifox Project. All rights reserved."
             VALUE "OriginalFilename", "KDI.exe"
-            VALUE "ProductName", "kiri Driver Installer"
+            VALUE "ProductName", "kiri System Project"
             VALUE "ProductVersion", "1.0.0.0"
         END
     END
