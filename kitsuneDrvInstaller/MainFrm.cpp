@@ -44,6 +44,16 @@ namespace
 	}
 }
 
+	constexpr int PreferredWindowWidth = 860;
+	constexpr int PreferredWindowHeight = 560;
+	constexpr int ScreenEdgeMargin = 8;
+
+	CSize CalculateFixedWindowSize(int workWidth, int workHeight)
+	{
+		return CSize(max(1, min(PreferredWindowWidth, workWidth - ScreenEdgeMargin * 2)),
+			max(1, min(PreferredWindowHeight, workHeight - ScreenEdgeMargin * 2)));
+	}
+
 IMPLEMENT_DYNAMIC(CMainFrame, CMDIFrameWndEx)
 
 BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWndEx)
@@ -191,8 +201,6 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 	// append the active child/document title a second time.
 	cs.style &= ~(FWS_ADDTOTITLE | WS_THICKFRAME | WS_MINIMIZEBOX |
 		WS_MAXIMIZEBOX | WS_MINIMIZE | WS_MAXIMIZE);
-	constexpr int PreferredWidth = 1180;
-	constexpr int PreferredHeight = 780;
 	// Set the final coordinates before CreateWindowEx. The frame is therefore
 	// born at the centered position and never paints at a saved/old position.
 	POINT cursor = {};
@@ -203,21 +211,41 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 	{
 		const int workWidth = info.rcWork.right - info.rcWork.left;
 		const int workHeight = info.rcWork.bottom - info.rcWork.top;
-		constexpr int ScreenEdgeMargin = 8;
-		// 800x600 refers to the monitor resolution, not the application size.
-		// Size the frame below the monitor work area and preserve an outer margin;
-		// the taskbar has already been excluded by rcWork.
-		cs.cx = max(1, min(PreferredWidth, workWidth - ScreenEdgeMargin * 2));
-		cs.cy = max(1, min(PreferredHeight, workHeight - ScreenEdgeMargin * 2));
+		// Use 900x600 on ordinary displays. Only shrink when the monitor work area
+		// is smaller, preserving a margin and the complete compact layout.
+		const CSize windowSize = CalculateFixedWindowSize(workWidth, workHeight);
+		cs.cx = windowSize.cx;
+		cs.cy = windowSize.cy;
 		cs.x = info.rcWork.left + (info.rcWork.right - info.rcWork.left - cs.cx) / 2;
 		cs.y = info.rcWork.top + (info.rcWork.bottom - info.rcWork.top - cs.cy) / 2;
 	}
 	else
 	{
-		cs.cx = PreferredWidth;
-		cs.cy = PreferredHeight;
+		cs.cx = PreferredWindowWidth;
+		cs.cy = PreferredWindowHeight;
 	}
 	return TRUE;
+}
+
+bool CMainFrame::RunWindowSizeTests(std::wstring& error)
+{
+	struct SizeCase { int workWidth; int workHeight; int width; int height; };
+	const SizeCase cases[] =
+	{
+		{ 1024, 768, 860, 560 },
+		{ 1024, 728, 860, 560 },
+		{ 800, 560, 784, 544 },
+		{ 640, 360, 624, 344 }
+	};
+	for (const SizeCase& test : cases)
+	{
+		const CSize size = CalculateFixedWindowSize(test.workWidth, test.workHeight);
+		if (size.cx == test.width && size.cy == test.height) continue;
+		error = L"fixed window size regression";
+		return false;
+	}
+	error.clear();
+	return true;
 }
 
 void CMainFrame::CenterBeforeFirstShow()

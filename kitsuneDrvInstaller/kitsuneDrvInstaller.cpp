@@ -153,6 +153,8 @@ namespace
 			L"[01:02:03] line one\r\n[01:02:03] line two\r\n[01:02:03] line three";
 		std::wstring layoutError;
 		const bool layout640x400Ok = CkitsuneDrvInstallerView::RunLayoutTests(layoutError);
+		std::wstring windowSizeError;
+		const bool fixedWindowSizeOk = CMainFrame::RunWindowSizeTests(windowSizeError);
 		std::wstring mediaCompatibilityError;
 		const bool mediaCompatibilityOk = SystemCompatibility::ValidateDriverMedia(dataRoot, mediaCompatibilityError);
 		std::wstring mediaTargetSystem;
@@ -200,6 +202,8 @@ namespace
 			<< "  \"timestamped_log_output\": \"" << JsonEscapeUtf8(multilineLog) << "\",\n"
 			<< "  \"layout_640x400_ok\": " << (layout640x400Ok ? "true" : "false") << ",\n"
 			<< "  \"layout_640x400_error\": \"" << JsonEscapeUtf8(layoutError) << "\",\n"
+			<< "  \"fixed_window_size_ok\": " << (fixedWindowSizeOk ? "true" : "false") << ",\n"
+			<< "  \"fixed_window_size_error\": \"" << JsonEscapeUtf8(windowSizeError) << "\",\n"
 			<< "  \"media_compatibility_ok\": " << (mediaCompatibilityOk ? "true" : "false") << ",\n"
 			<< "  \"media_compatibility_error\": \"" << JsonEscapeUtf8(mediaCompatibilityError) << "\",\n"
 			<< "  \"media_target_ok\": " << (mediaTargetOk ? "true" : "false") << ",\n"

@@ -336,34 +336,40 @@ void CkitsuneDrvInstallerView::LayoutControls(int width, int height)
 
 bool CkitsuneDrvInstallerView::RunLayoutTests(std::wstring& error)
 {
-	// A 640x400 monitor leaves roughly 600x280 client pixels after the fixed
-	// frame, caption, status bar and taskbar are removed. Conservative font
-	// metrics also cover classic Windows and high-DPI text.
-	const int width = 600;
-	const int height = 280;
-	const InstallerLayout layout = ComputeInstallerLayout(width, height, 30, 22);
-	const CRect controls[] = { layout.title, layout.languageLabel, layout.language,
-		layout.scan, layout.selectRecommended, layout.install, layout.devices,
-		layout.progress, layout.logLabel, layout.log };
-	for (const CRect& control : controls)
+	struct LayoutCase { int width; int height; const wchar_t* name; };
+	const LayoutCase cases[] =
 	{
-		if (RectInside(control, width, height)) continue;
-		error = L"640x400 layout places a control outside the client area";
-		return false;
-	}
-	if (layout.title.right > layout.languageLabel.left ||
-		layout.scan.right > layout.selectRecommended.left ||
-		layout.selectRecommended.right > layout.install.left ||
-		layout.devices.bottom > layout.progress.top ||
-		layout.progress.bottom > layout.logLabel.top ||
-		layout.logLabel.bottom > layout.log.top)
+		{ 836, 480, L"1024x768" },
+		{ 760, 464, L"800x600" },
+		{ 600, 280, L"640x400" }
+	};
+	for (const LayoutCase& test : cases)
 	{
-		error = L"640x400 layout contains overlapping controls";
-		return false;
+		const InstallerLayout layout = ComputeInstallerLayout(test.width, test.height, 30, 22);
+		const CRect controls[] = { layout.title, layout.languageLabel, layout.language,
+			layout.scan, layout.selectRecommended, layout.install, layout.devices,
+			layout.progress, layout.logLabel, layout.log };
+		for (const CRect& control : controls)
+		{
+			if (RectInside(control, test.width, test.height)) continue;
+			error = std::wstring(test.name) + L" layout places a control outside the client area";
+			return false;
+		}
+		if (layout.title.right > layout.languageLabel.left ||
+			layout.scan.right > layout.selectRecommended.left ||
+			layout.selectRecommended.right > layout.install.left ||
+			layout.devices.bottom > layout.progress.top ||
+			layout.progress.bottom > layout.logLabel.top ||
+			layout.logLabel.bottom > layout.log.top)
+		{
+			error = std::wstring(test.name) + L" layout contains overlapping controls";
+			return false;
+		}
 	}
 	error.clear();
 	return true;
 }
+
 bool CkitsuneDrvInstallerView::InitializeLanguageSelector()
 {
 	if (!m_language.GetSafeHwnd()) return false;

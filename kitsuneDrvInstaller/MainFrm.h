@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 class CMainFrame : public CMDIFrameWndEx
 {
 	DECLARE_DYNAMIC(CMainFrame)
@@ -13,6 +15,7 @@ public:
 	void SetInstallationActive(bool active);
 	void RefreshVersionStatus();
 	void RefreshWindowTitle();
+	static bool RunWindowSizeTests(std::wstring& error);
 
 #ifdef _DEBUG
 	virtual void AssertValid() const;
