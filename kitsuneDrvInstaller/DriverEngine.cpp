@@ -1568,10 +1568,22 @@ namespace
 		return false;
 	}
 
+	bool FinalizeInstalledDriver(bool afterInstallSucceeded, int& warningCount, std::wstring& error)
+	{
+		if (!afterInstallSucceeded && warningCount == 0) ++warningCount;
+		error.clear();
+		return true;
+	}
+
 	bool RunPostInstallActions(const std::wstring& sevenZip, const std::wstring& archive,
 		const std::wstring& cache, const DriverPackage& driver, bool& rebootRequired,
-		std::wstring& error, const DriverInstaller::LogCallback& log)
+		int& warningCount, std::wstring& error, const DriverInstaller::LogCallback& log)
 	{
+		auto reportWarning = [&](const std::wstring& warning)
+		{
+			++warningCount;
+			if (log) log(warning);
+		};
 		for (const auto& action : driver.afterInstallActions)
 		{
 			const bool matches = action.match.empty() ||
@@ -1582,19 +1594,22 @@ namespace
 			if (!BuildPostInstallCommand(type, L"configured.file", action, unusedCommand))
 			{
 				error = L"Unsupported after_install action type: " + action.type;
-				if (action.continueOnError) { if (log) log(error); continue; }
+				reportWarning(error);
+				if (action.continueOnError) continue;
 				return false;
 			}
 			if (action.file.empty())
 			{
 				error = L"after_install action has no configured file.";
-				if (action.continueOnError) { if (log) log(error); continue; }
+				reportWarning(error);
+				if (action.continueOnError) continue;
 				return false;
 			}
 			if (action.preventReboot && IsBlockedRestartCommand(action.file, action.arguments))
 			{
 				error = L"Blocked after_install restart command: " + action.file;
-				if (action.continueOnError) { if (log) log(error); continue; }
+				reportWarning(error);
+				if (action.continueOnError) continue;
 				return false;
 			}
 			std::wstring actionFile;
@@ -1604,11 +1619,16 @@ namespace
 				const std::wstring extract = Quote(sevenZip) + L" x -y -aoa -bd " +
 					Quote(L"-o" + cache) + L" " + Quote(archive) + L" " + Quote(pattern);
 				DWORD extractExit = 0;
-				if (!RunProcess(extract, extractExit, error)) return false;
+				if (!RunProcess(extract, extractExit, error))
+				{
+					reportWarning(error);
+					return false;
+				}
 				if (extractExit != 0)
 				{
 					error = std::wstring(Tr(TextId::SevenZipExtractFailed)) +
 						std::to_wstring(extractExit) + L".";
+					reportWarning(error);
 					return false;
 				}
 				if (!ResolvePostInstallFile(cache, driver, action, actionFile))
@@ -1620,13 +1640,19 @@ namespace
 			std::wstring workingDirectory = action.workingDirectory.empty()
 				? ParentDirectory(actionFile) : JoinPath(cache, action.workingDirectory);
 			std::wstring command;
-			if (!BuildPostInstallCommand(type, actionFile, action, command)) return false;
+			if (!BuildPostInstallCommand(type, actionFile, action, command))
+			{
+				error = L"Failed to build after_install command: " + action.file;
+				reportWarning(error);
+				return false;
+			}
 			if (log) log(L"after_install: " + FileNamePart(actionFile));
 			DWORD exitCode = 0;
 			if (!RunProcess(command, exitCode, error, workingDirectory))
 			{
 				error = L"Failed to start after_install action: " + action.file + L"; " + error;
-				if (action.continueOnError) { if (log) log(error); continue; }
+				reportWarning(error);
+				if (action.continueOnError) continue;
 				return false;
 			}
 			if (exitCode == ERROR_SUCCESS_REBOOT_REQUIRED || exitCode == ERROR_SUCCESS_REBOOT_INITIATED)
@@ -1638,7 +1664,8 @@ namespace
 			{
 				error = L"after_install action failed: " + action.file + L"; exit code " +
 					std::to_wstring(exitCode) + L".";
-				if (action.continueOnError) { if (log) log(error); continue; }
+				reportWarning(error);
+				if (action.continueOnError) continue;
 				return false;
 			}
 		}
@@ -1647,9 +1674,11 @@ namespace
 }
 
 bool DriverInstaller::Install(HWND ownerWindow, const std::wstring& dataRoot, const DeviceMatch& match,
-	bool& rebootRequired, std::wstring& error, const LogCallback& log)
+	bool& rebootRequired, int& afterInstallWarnings, std::wstring& error,
+	const LogCallback& log)
 {
 	rebootRequired = false;
+	afterInstallWarnings = 0;
 	const std::wstring sevenZip = Find7Zip(dataRoot);
 	if (sevenZip.empty())
 	{
@@ -1731,9 +1760,11 @@ bool DriverInstaller::Install(HWND ownerWindow, const std::wstring& dataRoot, co
 		return false;
 	}
 	rebootRequired = reboot != FALSE;
-	if (!RunPostInstallActions(sevenZip, archive, cache, match.driver,
-		rebootRequired, error, log)) return false;
-	return true;
+	const bool afterInstallSucceeded = RunPostInstallActions(sevenZip, archive, cache, match.driver,
+		rebootRequired, afterInstallWarnings, error, log);
+	// The primary INF is already installed. A failed optional follow-up action is
+	// reported as a warning and must not turn the driver installation into a failure.
+	return FinalizeInstalledDriver(afterInstallSucceeded, afterInstallWarnings, error);
 }
 
 bool DriverInstaller::RunAfterInstallTests(std::wstring& error)
@@ -1781,6 +1812,14 @@ bool DriverInstaller::RunAfterInstallTests(std::wstring& error)
 		lowerCaseMsiCommand != L"msiexec.exe /i \"C:\\Drivers\\package.msi\" /qn REBOOT=ReallySuppress")
 	{
 		error = L"after_install lowercase MSI command test failed";
+		return false;
+	}
+	int simulatedWarnings = 0;
+	std::wstring simulatedAfterInstallError = L"after_install action failed";
+	if (!FinalizeInstalledDriver(false, simulatedWarnings, simulatedAfterInstallError) ||
+		simulatedWarnings != 1 || !simulatedAfterInstallError.empty())
+	{
+		error = L"after_install warning classification test failed";
 		return false;
 	}
 	error.clear();

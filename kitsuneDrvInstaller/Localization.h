@@ -77,6 +77,7 @@ enum class TextId
 	InstallCompleteHeading,
 	InstallSuccessCountFormat,
 	InstallFailureCountFormat,
+	InstallWarningCountFormat,
 	RestartToApply,
 	AiInstallCountdown,
 	AiInstallCancelled,

@@ -75,6 +75,7 @@ namespace
 		{ L"Driver installation finished", L"驱动安装结束", L"驅動程式安裝結束" },
 		{ L"%d driver(s) installed successfully", L"%d 个驱动安装成功", L"%d 個驅動程式安裝成功" },
 		{ L"%d driver(s) failed to install", L"%d 个驱动安装失败", L"%d 個驅動程式安裝失敗" },
+		{ L"%d warning(s)", L"%d 个警告", L"%d 個警告" },
 		{ L"Restart Windows to apply the changes", L"请重新启动系统以使更改生效", L"請重新啟動系統以套用變更" },
 		{ L"Driver installation will begin in 5 seconds. Click anywhere in the application to cancel.", L"将在 5 秒后进行驱动安装，若要取消请点击程序任意位置", L"將在 5 秒後進行驅動程式安裝，若要取消請點擊程式任意位置" },
 		{ L"User activity detected; automatic installation was cancelled.", L"检测到用户操作，已取消自动安装", L"偵測到使用者操作，已取消自動安裝" },

@@ -670,17 +670,20 @@ void CkitsuneDrvInstallerView::OnInstall()
 	m_progress.SetRange32(0, static_cast<int>(selected.size()));
 	m_progress.SetPos(0);
 	int success = 0;
+	int warnings = 0;
 	for (size_t position = 0; position < selected.size(); ++position)
 	{
 		const int row = selected[position];
 		DeviceMatch& match = m_matches[static_cast<size_t>(row)];
 		AppendLog(std::wstring(Tr(TextId::StartInstall)) + match.displayName);
 		bool reboot = false;
+		int afterInstallWarnings = 0;
 		std::wstring error;
-		if (DriverInstaller::Install(ownerWindow, root, match, reboot, error,
+		if (DriverInstaller::Install(ownerWindow, root, match, reboot, afterInstallWarnings, error,
 			[this](const std::wstring& line) { AppendLog(line); }))
 		{
 			++success;
+			warnings += afterInstallWarnings;
 			m_devices.SetItemText(row, 4, reboot ? Tr(TextId::InstalledReboot) : Tr(TextId::InstalledSuccess));
 			m_devices.SetCheck(row, FALSE);
 			AppendLog(std::wstring(Tr(TextId::InstallSuccessLog)) + match.displayName);
@@ -707,6 +710,13 @@ void CkitsuneDrvInstallerView::OnInstall()
 		summary += L"\r\n";
 		summary += failureLine;
 	}
+	if (warnings > 0)
+	{
+		CString warningLine;
+		warningLine.Format(Tr(TextId::InstallWarningCountFormat), warnings);
+		summary += L"\r\n";
+		summary += warningLine;
+	}
 	if (!m_aiMode)
 	{
 		summary += L"\r\n";
@@ -722,7 +732,7 @@ void CkitsuneDrvInstallerView::OnInstall()
 	else
 	{
 		::MessageBoxW(GetSafeHwnd(), summary, Tr(TextId::InstallCompleteTitle),
-			MB_OK | (failed == 0 ? MB_ICONINFORMATION : MB_ICONWARNING));
+			MB_OK | (failed == 0 && warnings == 0 ? MB_ICONINFORMATION : MB_ICONWARNING));
 	}
 }
 
